@@ -19,7 +19,7 @@ Use this app only on networks you own or are explicitly authorised to test. Scan
 - **Saved connections** — Bookmarks with add, edit, and delete
 - **Airgeddon hook** — Deploy or remove a plugin on the remote host and show the log it writes
 - **Dark theme** — Black background with blue highlights
-- **Reconnect** — After a session has come up, an unexpected drop waits 3 seconds and tries once at a time. A failed first login does not loop
+- **Reconnect** — After a session has come up, an unexpected drop waits 3 seconds and tries one handshake at a time, up to 3 times. A failed first login, a bad password, or a changed host key stops instead of looping
 - **Interface-down retry** — If a command fails because an interface looks down, the client tries `ip link set <iface> up` once and sends the command again
 
 ## Status
@@ -28,7 +28,7 @@ Honest limits as of version 1.0:
 
 - Debug unit tests cover session JSON parsing and the reconnect decision policy. They do not talk to a device or a bettercap host.
 - One SSH session at a time. `SshTunnelManager` is a process-wide singleton.
-- Release signing is local. There is no keystore in the tree. Without `keystore.properties`, debug builds still work and release builds are unsigned.
+- Release signing is local. There is no keystore in the tree. Without `keystore.properties`, or with an incomplete one, debug builds still work and release builds are unsigned.
 - `android_gpsd.py` is a small original helper for this project, not vendored third-party code. It listens on `127.0.0.1` only. The `bettercap/` directory is empty and is not a bundled copy of bettercap.
 - Not published. Build from this checkout.
 
