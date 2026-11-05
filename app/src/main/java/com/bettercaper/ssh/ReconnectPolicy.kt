@@ -42,7 +42,7 @@ class ReconnectPolicy {
         acceptLoss = true
         reconnectPending = false
         startClaimed = false
-        generation
+        return generation
     }
 
     /** User disconnect or ViewModel teardown. Later loss events do nothing. */
