@@ -1,0 +1,58 @@
+{
+  "_comment": "Copy this to config.json and fill in real values. config.json is gitignored.",
+
+  "kali": {
+    "primary": {
+      "host": "192.168.10.XX",
+      "user": "klXX",
+      "ssh_pass": "testingXX",
+      "api_port": 8081,
+      "api_user": "user",
+      "api_pass": "user"
+    },
+    "fallback": {
+      "host": "192.168.10.YY",
+      "user": "klYY",
+      "ssh_pass": "testingYY",
+      "api_port": 8081,
+      "api_user": "user",
+      "api_pass": "user"
+    }
+  },
+
+  "dev_comp": {
+    "host": "192.168.X.X",
+    "user": "YOUR_USERNAME",
+    "adb_path": "~/Android/Sdk/platform-tools/adb"
+  },
+
+  "devices": {
+    "device1": { "serial": "YOUR_SERIAL_1", "name": "Device1", "bridge": null },
+    "device2": { "serial": "YOUR_SERIAL_2", "name": "Device2", "bridge": "dev_comp" },
+    "device3": { "serial": "YOUR_SERIAL_3", "name": "Device3", "bridge": "dev_comp" }
+  },
+
+  "pre_approved_commands": [
+    "help", "active", "set",
+    "net.show", "net.probe on", "net.probe off",
+    "net.recon on", "net.recon off",
+    "net.sniff on", "net.sniff off",
+    "wifi.show", "wifi.recon on", "wifi.recon off",
+    "ble.show", "ble.recon on", "ble.recon off",
+    "events.clear",
+    "http.proxy on", "http.proxy off",
+    "https.proxy on", "https.proxy off",
+    "arp.spoof on", "arp.spoof off"
+  ],
+
+  "pre_approved_caplet_ops": true,
+  "pre_approved_pcap_download": true,
+
+  "test_options": {
+    "screenshot_on_fail": true,
+    "screenshot_on_pass": false,
+    "stop_on_first_fail": false,
+    "connect_timeout_sec": 20,
+    "command_response_timeout_sec": 5
+  }
+}

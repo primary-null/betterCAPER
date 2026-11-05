@@ -1,0 +1,44 @@
+permissions:
+  contents: read
+
+name: Beta Debug Release
+
+# Manual only. This workflow uploads a debug APK as a GitHub prerelease.
+# Do not run it until publishing has been decided separately.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@8df1039506a2f0d4a2d3a8a4e8f5e6f7a8b9c0d1
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug
+
+    - name: Create Beta Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: beta-${{ github.run_id }}
+        name: Beta Release (Debug) #${{ github.run_id }}
+        body: |
+          Automated Beta Debug Release.
+          Commit: https://github.com/${{ github.repository }}/commit/${{ github.sha }}
+        files: app/build/outputs/apk/debug/app-debug.apk
+        prerelease: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
