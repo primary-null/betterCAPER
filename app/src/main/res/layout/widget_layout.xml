@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="#121212"
+    android:orientation="horizontal"
+    android:padding="8dp">
+
+    <Button
+        android:id="@+id/btn_wifi_recon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="WIFI RECON"
+        android:textColor="#00BFFF"
+        android:backgroundTint="#1E1E1E"
+        android:layout_marginEnd="8dp" />
+
+    <Button
+        android:id="@+id/btn_ble_recon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="BLE RECON"
+        android:textColor="#00BFFF"
+        android:backgroundTint="#1E1E1E" />
+</LinearLayout>
