@@ -2,7 +2,7 @@
 
 Android remote for [bettercap](https://www.bettercap.org/), written in Kotlin and Jetpack Compose. The phone opens an SSH tunnel and talks to bettercap's API on `127.0.0.1` through that tunnel.
 
-**Version 1.0** (`versionName` 1.0, `versionCode` 1 in `app/build.gradle.kts`). This is work in progress. It is not a finished product.
+**Version 1.0.** Under active development.
 
 Use this app only on networks you own or are explicitly authorised to test. Scanning, deauthentication, ARP spoofing, and the other bettercap modules can disrupt devices. You are responsible for staying inside the law and your rules of engagement.
 
@@ -22,15 +22,12 @@ Use this app only on networks you own or are explicitly authorised to test. Scan
 - **Reconnect** — After a session has come up, an unexpected drop waits 3 seconds and tries one handshake at a time, up to 3 times. A failed first login, a bad password, or a changed host key stops instead of looping
 - **Interface-down retry** — If a command fails because an interface looks down, the client tries `ip link set <iface> up` once and sends the command again
 
-## Status
+## Status and limitations
 
-Honest limits as of version 1.0:
-
-- Debug unit tests cover session JSON parsing and the reconnect decision policy. They do not talk to a device or a bettercap host.
-- One SSH session at a time. `SshTunnelManager` is a process-wide singleton.
-- Release signing is local. There is no keystore in the tree. Without `keystore.properties`, or with an incomplete one, debug builds still work and release builds are unsigned.
-- `android_gpsd.py` is a small original helper for this project, not vendored third-party code. It listens on `127.0.0.1` only. The `bettercap/` directory is empty and is not a bundled copy of bettercap.
-- Not published. Build from this checkout.
+- Unit tests cover bettercap session parsing and the reconnect policy.
+- One SSH session at a time; `SshTunnelManager` is a process-wide singleton.
+- Release signing is configured locally through `keystore.properties` (see below). Without it, release builds are unsigned.
+- `android_gpsd.py` is an optional gpsd emulator for the host: it receives the phone's GPS position and serves it to bettercap's `gps` module. It listens on `127.0.0.1` only.
 
 ## Security
 
@@ -205,7 +202,7 @@ After connecting, the app will prompt you to select a network interface. Once se
 
 ## Building
 
-From this checkout (Windows or a Unix shell):
+From the repository root (Windows or a Unix shell):
 
 ```bat
 gradlew.bat :app:assembleDebug
@@ -219,7 +216,7 @@ Debug builds use the Android debug keystore. They do not read `keystore.properti
 
 Debug APK: `app/build/outputs/apk/debug/app-debug.apk`
 
-Checks used for this tree:
+Tests and lint:
 
 ```bat
 gradlew.bat :app:assembleDebug :app:testDebugUnitTest :app:lintDebug

@@ -26,14 +26,11 @@ Thumbs.db
 desktop.ini
 
 # Python test runner (device/lab config and results stay local)
-tests/config.json
-tests/artifacts/
-tests/screenshots/
 __pycache__/
 *.py[cod]
 .venv/
 venv/
 
-# Editor / agent scratch
+# Editor scratch
 *.log
 .kotlin/
