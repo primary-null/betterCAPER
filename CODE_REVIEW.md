@@ -22,7 +22,9 @@ The notes below are the original review. Each item is marked with what the 2026-
 | 3.4 Command history lost on navigation | **Fixed.** History is `AppUiState.commandHistory` (50 entries) for the ViewModel lifetime. Disconnect clears it. |
 | 3.5 Silent plaintext fallback | **Fixed.** `SecureStorage.keystoreUnavailable` is true when the keystore cannot be opened, and the ViewModel shows a toast. |
 | 3.6 `wifi.deauth` broadcast suggestion | **Fixed.** The suggestion is `wifi.deauth <BSSID>` and says `wifi.recon` must already be running. |
-| Signing passwords in `app/build.gradle.kts` | **Fixed.** Not part of the May review. Passwords load from gitignored `keystore.properties`. |
+| Signing passwords in `app/build.gradle.kts` | **Fixed.** Not part of the May review. Passwords load from gitignored `keystore.properties`. An incomplete file warns and leaves release unsigned, so debug configuration still succeeds. |
+
+Follow-up on the same pass: automatic reconnects stop after 3 attempts. Authentication and host-key failures do not retry. `onCleared` stops location updates. A stale reconnect delay cannot hold the single reconnect slot. A remote WebSocket close with code 1000 is unchanged, because this client also closes with 1000.
 
 ---
 

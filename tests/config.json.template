@@ -3,17 +3,17 @@
 
   "kali": {
     "primary": {
-      "host": "192.168.10.XX",
-      "user": "klXX",
-      "ssh_pass": "testingXX",
+      "host": "192.168.1.10",
+      "user": "YOUR_USER",
+      "ssh_pass": "YOUR_PASSWORD",
       "api_port": 8081,
       "api_user": "user",
       "api_pass": "user"
     },
     "fallback": {
-      "host": "192.168.10.YY",
-      "user": "klYY",
-      "ssh_pass": "testingYY",
+      "host": "192.168.1.11",
+      "user": "YOUR_USER",
+      "ssh_pass": "YOUR_PASSWORD",
       "api_port": 8081,
       "api_user": "user",
       "api_pass": "user"

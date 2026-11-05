@@ -161,7 +161,7 @@ class MainViewModel @Inject constructor(
         isIntentionalDisconnect = false
         reconnectJob?.cancel()
         reconnectJob = null
-        val generation = reconnectPolicy.beginAttempt()
+        val generation = reconnectPolicy.beginUserAttempt()
         launchConnection(params, generation, retryOnFailure = false)
     }
 
@@ -255,35 +255,44 @@ class MainViewModel @Inject constructor(
                     withContext(Dispatchers.IO) { runCatching { tunnelManager.releaseEpoch(epoch) } }
                 }
                 if (!reconnectPolicy.isCurrent(generation)) return@launch
+                val errorMsg = e.message ?: "Connection failed"
                 val action = reconnectPolicy.onAttemptFinished(
                     generation,
                     success = false,
-                    retryOnFailure = retryOnFailure
+                    retryOnFailure = retryOnFailure,
+                    retryable = isRetryableConnectionFailure(errorMsg)
                 )
-                if (action == ReconnectAction.Schedule) {
-                    _uiState.update { it.copy(connecting = false, connected = false) }
-                    scheduleReconnect(generation)
-                } else {
-                    val errorMsg = e.message ?: "Connection failed"
-                    _uiState.update {
-                        it.copy(connecting = false, connected = false, error = errorMsg, reconnectingMessage = null)
+                when (action) {
+                    ReconnectAction.Schedule -> {
+                        _uiState.update { it.copy(connecting = false, connected = false) }
+                        scheduleReconnect(generation)
                     }
-                    if (!errorMsg.startsWith("Host key changed")) {
-                        showToast("Connection Failed: $errorMsg")
-                    }
+                    ReconnectAction.GiveUp -> showConnectionFailure(
+                        "$errorMsg Stopped after ${ReconnectPolicy.MAX_AUTOMATIC_RECONNECTS} reconnect attempts."
+                    )
+                    else -> showConnectionFailure(errorMsg)
                 }
             }
         }
     }
 
     private fun onTransportLost(eventGeneration: Int) {
-        if (reconnectPolicy.onTransportLost(eventGeneration) != ReconnectAction.Schedule) return
-        viewModelScope.launch { scheduleReconnect(eventGeneration) }
+        when (reconnectPolicy.onTransportLost(eventGeneration)) {
+            ReconnectAction.Schedule -> viewModelScope.launch { scheduleReconnect(eventGeneration) }
+            ReconnectAction.GiveUp -> viewModelScope.launch {
+                showConnectionFailure(
+                    "Connection dropped. Stopped after ${ReconnectPolicy.MAX_AUTOMATIC_RECONNECTS} reconnect attempts."
+                )
+            }
+            else -> Unit
+        }
     }
 
     private fun scheduleReconnect(generation: Int) {
+        // A loss posted before the user pressed Connect must not occupy reconnectJob.
+        if (!reconnectPolicy.isCurrent(generation)) return
         if (isIntentionalDisconnect || activeParams == null) return
-        if (reconnectJob?.isActive == true) return
+        reconnectJob?.cancel()
         reconnectJob = viewModelScope.launch {
             _uiState.update {
                 it.copy(
@@ -294,11 +303,23 @@ class MainViewModel @Inject constructor(
                 )
             }
             delay(3000)
-            if (!isActive) return@launch
             val params = activeParams ?: return@launch
             if (reconnectPolicy.onDelayElapsed(generation) != ReconnectAction.Start) return@launch
             val next = reconnectPolicy.beginAttempt()
             launchConnection(params, next, retryOnFailure = true)
+        }
+    }
+
+    private fun isRetryableConnectionFailure(message: String): Boolean {
+        return !message.startsWith("Authentication failed") && !message.startsWith("Host key changed")
+    }
+
+    private fun showConnectionFailure(message: String) {
+        _uiState.update {
+            it.copy(connecting = false, connected = false, error = message, reconnectingMessage = null)
+        }
+        if (!message.startsWith("Host key changed")) {
+            showToast("Connection Failed: $message")
         }
     }
 
@@ -674,6 +695,7 @@ class MainViewModel @Inject constructor(
         val socket = webSocket
         webSocket = null
         socket?.close(1000, null)
+        locationTracker.stopTracking()
         // viewModelScope is cancelled as this ViewModel clears, so the blocking
         // SSH close runs on a daemon thread and cannot ANR the main thread.
         val tunnel = tunnelManager

@@ -9,32 +9,33 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-// Release signing stays out of source. Debug builds never read this file.
-// A missing keystore.properties leaves the release variant unsigned so configuration still succeeds.
+// Release signing stays out of source. Debug builds do not require this file.
+// A missing or incomplete keystore.properties leaves release unsigned so every variant still configures.
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties()
-val hasReleaseKeystore = keystorePropertiesFile.isFile
-if (hasReleaseKeystore) {
+val keystoreProblems = mutableListOf<String>()
+if (keystorePropertiesFile.isFile) {
     FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
     val required = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
     val missing = required.filter { keystoreProperties.getProperty(it).isNullOrBlank() }
     if (missing.isNotEmpty()) {
-        error(
-            "keystore.properties is missing required entries: ${missing.joinToString(", ")}. " +
-                "See keystore.properties.example."
-        )
+        keystoreProblems += "missing entries: ${missing.joinToString(", ")}"
     }
     val storeName = keystoreProperties.getProperty("storeFile")
-    if (!rootProject.file(storeName).isFile) {
-        error(
-            "Release keystore '$storeName' was not found. " +
-                "Put the keystore next to the project or fix storeFile in keystore.properties."
-        )
+    if (!storeName.isNullOrBlank() && !rootProject.file(storeName).isFile) {
+        keystoreProblems += "keystore file '$storeName' was not found"
     }
-} else {
+}
+val hasReleaseKeystore = keystorePropertiesFile.isFile && keystoreProblems.isEmpty()
+if (!keystorePropertiesFile.isFile) {
     logger.lifecycle(
         "keystore.properties not found. Debug builds are unaffected. " +
             "Release APKs will be unsigned until you copy keystore.properties.example."
+    )
+} else if (keystoreProblems.isNotEmpty()) {
+    logger.lifecycle(
+        "keystore.properties cannot be used (${keystoreProblems.joinToString("; ")}). " +
+            "Debug builds are unaffected. Release APKs will be unsigned. See keystore.properties.example."
     )
 }
 
