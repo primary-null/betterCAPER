@@ -1,0 +1,39 @@
+# Build output
+.gradle/
+build/
+**/build/
+.cxx/
+captures/
+
+# Local machine / SDK
+local.properties
+
+# Release signing. Copy keystore.properties.example and keep the real file here.
+keystore.properties
+*.jks
+*.keystore
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python test runner (device/lab config and results stay local)
+tests/config.json
+tests/artifacts/
+tests/screenshots/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Editor / agent scratch
+*.log
+.kotlin/
