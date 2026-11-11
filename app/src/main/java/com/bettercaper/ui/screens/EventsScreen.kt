@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.bettercaper.api.model.BcEvent
+import com.bettercaper.ui.components.ScreenTitle
 import com.bettercaper.ui.theme.*
 import com.bettercaper.viewmodel.AppUiState
 import com.google.gson.Gson
@@ -65,7 +66,7 @@ fun EventsScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
                     } else {
-                        Text("Event Stream", color = GreenPrimary)
+                        ScreenTitle("Event Stream", uiState)
                     }
                 },
                 navigationIcon = {

@@ -14,13 +14,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.bettercaper.data.AirgeddonEvent
+import com.bettercaper.ui.components.ScreenTitle
 import com.bettercaper.ui.theme.*
 import com.bettercaper.viewmodel.AirgeddonUiState
+import com.bettercaper.viewmodel.AppUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AirgeddonScreen(
     state: AirgeddonUiState,
+    uiState: AppUiState = AppUiState(),
     onCheckPlugin: () -> Unit,
     onDeployPlugin: () -> Unit,
     onRemovePlugin: () -> Unit,
@@ -39,7 +42,7 @@ fun AirgeddonScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Airgeddon Hooks", color = GreenPrimary) },
+                title = { ScreenTitle("Airgeddon Hooks", uiState) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

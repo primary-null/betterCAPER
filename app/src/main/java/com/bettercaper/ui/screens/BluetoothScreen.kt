@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.bettercaper.api.model.BtDevice
+import com.bettercaper.ui.components.ScreenTitle
 import com.bettercaper.ui.theme.*
 import com.bettercaper.viewmodel.AppUiState
 
@@ -28,7 +29,7 @@ fun BluetoothScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Bluetooth", color = GreenPrimary) },
+                title = { ScreenTitle("Bluetooth", uiState) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

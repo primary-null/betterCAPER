@@ -18,7 +18,7 @@ Use this app only on networks you own or are explicitly authorised to test. Scan
 - **WiFi & BLE hook** — On demand, deploy a caplet that starts `wifi.recon` and `ble.recon` together
 - **Saved connections** — Bookmarks with add, edit, and delete
 - **Airgeddon hook** — Deploy or remove a plugin on the remote host and show the log it writes
-- **Dark theme** — Black background with blue highlights
+- **Dark theme** — Near-black surfaces, matrix green primary, and readable secondary text
 - **Reconnect** — After a session has come up, an unexpected drop waits 3 seconds and tries one handshake at a time, up to 3 times. A failed first login, a bad password, or a changed host key stops instead of looping
 - **Interface-down retry** — If a command fails because an interface looks down, the client tries `ip link set <iface> up` once and sends the command again
 

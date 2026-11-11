@@ -13,7 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
-import com.bettercaper.ui.theme.GreenPrimary
+import com.bettercaper.ui.components.ScreenTitle
 import com.bettercaper.ui.theme.SurfaceDark
 import com.bettercaper.ui.theme.WarningAmber
 import com.bettercaper.viewmodel.AppUiState
@@ -31,7 +31,7 @@ fun WebViewScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Bettercap Web UI", color = GreenPrimary) },
+                title = { ScreenTitle("Bettercap Web UI", uiState) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

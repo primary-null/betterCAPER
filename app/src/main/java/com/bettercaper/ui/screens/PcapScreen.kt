@@ -13,12 +13,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.bettercaper.ui.components.ScreenTitle
+import com.bettercaper.ui.theme.SurfaceDark
+import com.bettercaper.viewmodel.AppUiState
 import com.bettercaper.viewmodel.PcapUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PcapScreen(
     state: PcapUiState,
+    uiState: AppUiState = AppUiState(),
     onLoadPcaps: () -> Unit,
     onDownloadPcap: (String) -> Unit,
     onBack: () -> Unit
@@ -32,7 +36,8 @@ fun PcapScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("PCAP Exports") },
+                title = { ScreenTitle("PCAP Exports", uiState) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceDark),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, "Back")

@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.bettercaper.api.model.BcModule
+import com.bettercaper.ui.components.ScreenTitle
 import com.bettercaper.ui.theme.*
 import com.bettercaper.viewmodel.AppUiState
 import com.google.gson.Gson
@@ -39,14 +40,11 @@ fun ModulesScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text("Modules", color = GreenPrimary)
-                        Text(
-                            "$runningCount running · ${modules.size} total",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = OnSurfaceMuted
-                        )
-                    }
+                    ScreenTitle(
+                        "Modules",
+                        uiState,
+                        subtitle = "$runningCount running · ${modules.size} total"
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

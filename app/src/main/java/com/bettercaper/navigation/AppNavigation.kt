@@ -80,6 +80,7 @@ fun AppNavigation(vm: MainViewModel = hiltViewModel()) {
         composable(Screen.SavedConnections.route) {
             SavedConnectionsScreen(
                 connections = savedConnections,
+                uiState = uiState,
                 onConnect = { params ->
                     vm.connect(params)
                     navController.navigate(Screen.Connect.route) {
@@ -193,6 +194,7 @@ fun AppNavigation(vm: MainViewModel = hiltViewModel()) {
         composable(Screen.Airgeddon.route) {
             AirgeddonScreen(
                 state = airgeddonState,
+                uiState = uiState,
                 onCheckPlugin = { vm.airgeddonCheckPlugin() },
                 onDeployPlugin = { vm.airgeddonDeployPlugin() },
                 onRemovePlugin = { vm.airgeddonRemovePlugin() },
@@ -204,6 +206,7 @@ fun AppNavigation(vm: MainViewModel = hiltViewModel()) {
         composable(Screen.WifiBle.route) {
             WifiBleScreen(
                 state = wifiBleState,
+                uiState = uiState,
                 onCheck = { vm.wifiBleCheckCaplet() },
                 onDeploy = { vm.wifiBleDeployCaplet() },
                 onRemove = { vm.wifiBleRemoveCaplet() },
@@ -216,6 +219,7 @@ fun AppNavigation(vm: MainViewModel = hiltViewModel()) {
             val capletsState by vm.capletsState.collectAsState()
             CapletsScreen(
                 state = capletsState,
+                uiState = uiState,
                 onLoadCaplets = { vm.loadCaplets() },
                 onRunCaplet = { path -> vm.sendCommand("include $path"); navController.navigate(Screen.Command.route) },
                 onEditCaplet = { path -> vm.openCapletEditor(path) },
@@ -229,6 +233,7 @@ fun AppNavigation(vm: MainViewModel = hiltViewModel()) {
             val context = LocalContext.current
             PcapScreen(
                 state = pcapState,
+                uiState = uiState,
                 onLoadPcaps = { vm.loadPcaps() },
                 onDownloadPcap = { path ->
                     val dir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)

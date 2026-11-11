@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.bettercaper.ui.components.ScreenTitle
 import com.bettercaper.ui.theme.*
 import com.bettercaper.viewmodel.AppUiState
 
@@ -32,7 +33,7 @@ fun ProxyScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Proxies", color = GreenPrimary) },
+                title = { ScreenTitle("Proxies", uiState) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

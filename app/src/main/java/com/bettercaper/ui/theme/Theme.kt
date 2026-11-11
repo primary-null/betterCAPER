@@ -18,7 +18,7 @@ private val DarkColorScheme = darkColorScheme(
     surfaceVariant = SurfaceVariant,
     onSurfaceVariant = OnSurfaceMuted,
     error = ErrorRed,
-    outline = OnSurfaceMuted
+    outline = OutlineMuted
 )
 
 @Composable

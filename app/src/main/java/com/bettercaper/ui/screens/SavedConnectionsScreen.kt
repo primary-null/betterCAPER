@@ -18,13 +18,16 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.bettercaper.data.SavedConnection
+import com.bettercaper.ui.components.ScreenTitle
 import com.bettercaper.ui.theme.*
+import com.bettercaper.viewmodel.AppUiState
 import com.bettercaper.viewmodel.ConnectParams
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SavedConnectionsScreen(
     connections: List<SavedConnection>,
+    uiState: AppUiState = AppUiState(),
     onConnect: (ConnectParams) -> Unit,
     onUpsert: (SavedConnection) -> Unit,
     onDelete: (String) -> Unit,
@@ -48,7 +51,7 @@ fun SavedConnectionsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Saved Connections", color = GreenPrimary) },
+                title = { ScreenTitle("Saved Connections", uiState) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

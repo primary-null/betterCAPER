@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import com.bettercaper.ui.components.ScreenTitle
 import com.bettercaper.ui.theme.*
 import com.bettercaper.viewmodel.AppUiState
 
@@ -87,7 +88,6 @@ fun CommandScreen(
     var outputExpanded by remember { mutableStateOf(true) }
     val history = uiState.commandHistory
     val groups = remember(uiState.session) { buildSuggestions(uiState) }
-    val iface = uiState.session?.iface?.name
 
     // Auto-expand when a command response arrives
     LaunchedEffect(uiState.commandOutput) {
@@ -97,18 +97,7 @@ fun CommandScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Column {
-                        Text("Command", color = GreenPrimary)
-                        if (iface != null) {
-                            Text(
-                                "iface: $iface",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = CyanAccent
-                            )
-                        }
-                    }
-                },
+                title = { ScreenTitle("Command", uiState) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

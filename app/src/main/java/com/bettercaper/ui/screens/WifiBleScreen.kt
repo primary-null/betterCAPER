@@ -9,13 +9,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.bettercaper.ui.components.ScreenTitle
 import com.bettercaper.ui.theme.*
+import com.bettercaper.viewmodel.AppUiState
 import com.bettercaper.viewmodel.WifiBleUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WifiBleScreen(
     state: WifiBleUiState,
+    uiState: AppUiState = AppUiState(),
     onCheck: () -> Unit,
     onDeploy: () -> Unit,
     onRemove: () -> Unit,
@@ -28,7 +31,7 @@ fun WifiBleScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("WiFi & BLE Hook", color = GreenPrimary) },
+                title = { ScreenTitle("WiFi & BLE Hook", uiState) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

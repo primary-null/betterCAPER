@@ -18,13 +18,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.bettercaper.ui.components.ScreenTitle
 import com.bettercaper.ui.theme.*
+import com.bettercaper.viewmodel.AppUiState
 import com.bettercaper.viewmodel.CapletsUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CapletsScreen(
     state: CapletsUiState,
+    uiState: AppUiState = AppUiState(),
     onLoadCaplets: () -> Unit,
     onRunCaplet: (String) -> Unit,
     onEditCaplet: (String) -> Unit,
@@ -44,7 +47,7 @@ fun CapletsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Caplets") },
+                title = { ScreenTitle("Caplets", uiState) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, "Back")

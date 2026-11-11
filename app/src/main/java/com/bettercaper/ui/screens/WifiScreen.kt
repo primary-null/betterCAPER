@@ -17,6 +17,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.bettercaper.api.model.AccessPoint
 import com.bettercaper.api.model.WifiClient
+import com.bettercaper.ui.components.ScreenTitle
 import com.bettercaper.ui.theme.*
 import com.bettercaper.viewmodel.AppUiState
 
@@ -32,7 +33,7 @@ fun WifiScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("WiFi", color = GreenPrimary) },
+                title = { ScreenTitle("WiFi", uiState) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

@@ -23,9 +23,9 @@ import android.content.Context
 import androidx.compose.foundation.clickable
 import com.bettercaper.api.model.BcModule
 import com.bettercaper.api.model.Host
+import com.bettercaper.ui.components.SessionStatusLine
 import com.bettercaper.ui.theme.*
 import com.bettercaper.viewmodel.AppUiState
-import androidx.compose.foundation.BorderStroke
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,18 +69,12 @@ fun DashboardScreen(
                 title = {
                     Column {
                         Text("betterCAPER", style = MaterialTheme.typography.titleLarge, color = GreenPrimary)
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            if (iface != null) {
-                                Text(
-                                    "${iface.name ?: "Unknown"} · ${iface.resolvedIpv4 ?: "—"}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = OnSurfaceMuted
-                                )
-                            }
-                            if (wifiReconRunning && wifiIfaceName != null && wifiIfaceName != "null") {
+                        SessionStatusLine(uiState)
+                        if (wifiReconRunning && wifiIfaceName != null && wifiIfaceName != "null") {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
                                 SuggestionChip(
                                     onClick = {},
                                     label = { Text(wifiIfaceName, style = MaterialTheme.typography.labelSmall) },
@@ -112,10 +106,28 @@ fun DashboardScreen(
                             expanded = menuExpanded,
                             onDismissRequest = { menuExpanded = false }
                         ) {
+                            Text(
+                                "Control",
+                                modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = OnSurfaceMuted
+                            )
                             DropdownMenuItem(
                                 text = { Text("Modules") },
                                 leadingIcon = { Icon(Icons.Default.Tune, contentDescription = null) },
                                 onClick = { menuExpanded = false; onNavigateModules() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Caplets") },
+                                leadingIcon = { Icon(Icons.Default.Code, contentDescription = null) },
+                                onClick = { menuExpanded = false; onNavigateCaplets() }
+                            )
+                            HorizontalDivider()
+                            Text(
+                                "More",
+                                modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = OnSurfaceMuted
                             )
                             DropdownMenuItem(
                                 text = { Text("Spoofing & MAC") },
@@ -131,11 +143,6 @@ fun DashboardScreen(
                                 text = { Text("Web UI") },
                                 leadingIcon = { Icon(Icons.Default.Web, contentDescription = null) },
                                 onClick = { menuExpanded = false; onNavigateWebUi() }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Caplets") },
-                                leadingIcon = { Icon(Icons.Default.Code, contentDescription = null) },
-                                onClick = { menuExpanded = false; onNavigateCaplets() }
                             )
                             DropdownMenuItem(
                                 text = { Text("WiFi & BLE Hook") },
@@ -207,32 +214,6 @@ fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(vertical = 16.dp)
         ) {
-            if (uiState.reconnectingMessage != null) {
-                item {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = SurfaceVariant),
-                        border = BorderStroke(1.dp, WarningAmber.copy(alpha = 0.5f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp,
-                                color = WarningAmber
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                text = uiState.reconnectingMessage,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = WarningAmber
-                            )
-                        }
-                    }
-                }
-            }
             // Interface card
             if (iface != null || gateway != null) {
                 item {
@@ -264,6 +245,13 @@ fun DashboardScreen(
             }
 
             // LAN hosts
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = onNavigateModules) { Text("Modules") }
+                    TextButton(onClick = onNavigateCaplets) { Text("Caplets") }
+                }
+            }
+
             item {
                 Text(
                     "LAN Hosts (${hosts.size})",

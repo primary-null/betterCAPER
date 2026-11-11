@@ -66,6 +66,7 @@ data class AppUiState(
     val showInterfaceDialog: Boolean = false,
     val savedConnectionId: String? = null,
     val localUiPort: Int? = null,
+    val endpointLabel: String? = null,
     // One-shot flag: set true when connection succeeds, cleared immediately after navigation.
     // Prevents ConnectScreen re-triggering navigation when returning via Back while still connected.
     val navigateToDashboard: Boolean = false,
@@ -177,7 +178,9 @@ class MainViewModel @Inject constructor(
         webSocket = null
         connectionJob = viewModelScope.launch {
             previousSocket?.close(1000, null)
-            _uiState.update { it.copy(connecting = true, error = null) }
+            _uiState.update {
+                it.copy(connecting = true, error = null, endpointLabel = params.sshHost)
+            }
             var opened: OpenedTunnel? = null
             try {
                 val tunnel = withContext(Dispatchers.IO) {

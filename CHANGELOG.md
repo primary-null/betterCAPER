@@ -10,3 +10,4 @@ Work in progress. Version name `1.0`, version code `1`.
 - Command history stays in the ViewModel while the session is connected.
 - If the Android keystore cannot be opened, the app tells you that saved secrets are not encrypted.
 - The `wifi.deauth` suggestion asks for one BSSID and notes that `wifi.recon` has to be running.
+- Screens use a near-black surface, readable secondary text, and a status line with the SSH host, interface, and reconnect text. The dashboard overflow is grouped, and Modules and Caplets sit above the host list.
