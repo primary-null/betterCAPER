@@ -13,6 +13,13 @@ keystore.properties
 *.jks
 *.keystore
 
+# Release work area (see RELEASING.md): unsigned and signed APKs never belong in git
+release-work/
+dist/
+*.apk
+*.aab
+*.idsig
+
 # IDE
 .idea/
 *.iml

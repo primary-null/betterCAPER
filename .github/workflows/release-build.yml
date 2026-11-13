@@ -1,0 +1,124 @@
+name: Release build (unsigned)
+
+# Manual only. Builds the release APK from main on GitHub's runner, checks it, attests its
+# build provenance and leaves it UNSIGNED. The signing key never goes to GitHub: the maintainer
+# downloads this artifact, signs it offline with tools/release/sign_release.py, uploads the result
+# to a draft release and then runs the "Publish release" workflow. See RELEASING.md.
+#
+# Deliberately no Gradle cache (a cache restored from other runs is an input to a release build),
+# no secrets and no write access to repository contents.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag: v + versionName from app/build.gradle.kts (for example v1.0)'
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: release-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build unsigned release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read       # check out the code
+      id-token: write      # sign the build-provenance attestation
+      attestations: write  # store the attestation
+    defaults:
+      run:
+        shell: bash
+    env:
+      BUILD_TOOLS_VERSION: 36.0.0
+      RELEASE_TAG: ${{ inputs.tag }}
+
+    steps:
+    - name: Release builds run from main only
+      if: github.ref != 'refs/heads/main'
+      run: |
+        echo "::error::Release builds run from main only; this run is on ${GITHUB_REF}."
+        exit 1
+
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Refuse to build with signing material present
+      run: |
+        tracked=$(git ls-files -- '*.jks' '*.keystore' '*.p12' '*.pfx')
+        if [ -e keystore.properties ] || [ -n "$tracked" ]; then
+          echo "::error::Signing material is present in the checkout. The GitHub build must stay unsigned."
+          exit 1
+        fi
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Install pinned Android build-tools
+      run: |
+        "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "build-tools;${BUILD_TOOLS_VERSION}" > /dev/null
+        test -x "${ANDROID_HOME}/build-tools/${BUILD_TOOLS_VERSION}/apksigner"
+
+    - name: Check the release tooling
+      run: python3 -m unittest discover -s tools/release -v
+
+    - name: Unit tests and unsigned release build
+      run: |
+        chmod +x gradlew
+        ./gradlew --no-daemon --stacktrace :app:testDebugUnitTest :app:assembleRelease
+
+    - name: Check and stage the unsigned APK
+      run: |
+        tools="${ANDROID_HOME}/build-tools/${BUILD_TOOLS_VERSION}"
+        built=app/build/outputs/apk/release/app-release-unsigned.apk
+        mkdir -p dist
+        # First pass reads the version, second pass checks the staged file and writes the metadata.
+        python3 -I tools/release/apk_check.py unsigned "$built" --tag "$RELEASE_TAG" \
+          --build-tools "$tools" --json dist/probe.json
+        version=$(jq -r .versionName dist/probe.json)
+        rm dist/probe.json
+        cp "$built" "dist/betterCAPER-${version}-unsigned.apk"
+        python3 -I tools/release/apk_check.py unsigned "dist/betterCAPER-${version}-unsigned.apk" \
+          --tag "$RELEASE_TAG" --build-tools "$tools" \
+          --commit "$GITHUB_SHA" --run-id "$GITHUB_RUN_ID" --json dist/release-metadata.json
+        ls -l dist
+
+    - name: Attest build provenance of the unsigned APK
+      uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+      with:
+        subject-path: dist/betterCAPER-*-unsigned.apk
+
+    - name: Upload the unsigned APK and its metadata
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: unsigned-${{ inputs.tag }}
+        path: |
+          dist/betterCAPER-*-unsigned.apk
+          dist/release-metadata.json
+        retention-days: 30
+        if-no-files-found: error
+
+    - name: Summary
+      run: |
+        {
+          echo "## Unsigned release APK for ${RELEASE_TAG}"
+          echo
+          echo "This file is **not installable**: it has no signature. Sign it offline, then publish."
+          echo
+          echo '```'
+          echo "commit  ${GITHUB_SHA}"
+          echo "run     ${GITHUB_RUN_ID}"
+          jq -r '"package " + .package, "version " + .versionName + " (code " + (.versionCode|tostring) + ")", "sha256  " + .unsignedSha256' dist/release-metadata.json
+          echo '```'
+          echo
+          echo "Next: \`gh run download ${GITHUB_RUN_ID} -n unsigned-${RELEASE_TAG}\`, then follow RELEASING.md."
+        } >> "$GITHUB_STEP_SUMMARY"

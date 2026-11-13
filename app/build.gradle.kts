@@ -64,7 +64,15 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Debug builds are signed with a throwaway debug key, so they must never share a package
+            // name with the signed release. Android refuses an in-place update across signers and the
+            // only way out is an uninstall, which erases app data. A separate ID installs side by side.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
+            isDebuggable = false
             isMinifyEnabled = true
             if (hasReleaseKeystore) {
                 signingConfig = signingConfigs.getByName("release")

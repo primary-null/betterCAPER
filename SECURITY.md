@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Security fixes target the latest version on the `main` branch.
+Security fixes target the latest release and the `main` branch. Install APKs only from the [Releases page](https://github.com/primary-null/betterCAPER/releases) and check the signing certificate as described in the README; CI debug builds are not releases.
 
 ## Reporting a Vulnerability
 

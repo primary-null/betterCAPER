@@ -6,6 +6,33 @@ Android remote for [bettercap](https://www.bettercap.org/), written in Kotlin an
 
 Use this app only on networks you own or are explicitly authorised to test. Scanning, deauthentication, ARP spoofing, and the other bettercap modules can disrupt devices. You are responsible for staying inside the law and your rules of engagement.
 
+## Download and install
+
+**No signed APK has been published yet.** The instructions below apply once the first release is published.
+
+1. Open the **[Releases page](https://github.com/primary-null/betterCAPER/releases)** and download `betterCAPER-<version>.apk` from **Assets**. No GitHub account is needed.
+2. On a phone running Android 10 or later, allow installs from the app you open the file with (Settings → Apps → Special app access → Install unknown apps; the wording varies by phone).
+3. Open the APK and tap **Install**.
+
+The release notes list the APK's SHA-256 and the SHA-256 of the signing certificate. Releases are built by GitHub Actions from this repository and signed with the project's signing key, which never leaves the maintainer's machine. See [RELEASING.md](RELEASING.md).
+
+### Upgrade
+
+Install the newer release over the old one. Do not uninstall first: Android keeps your saved connections because the signing certificate is the same in every release. Android will not install an older version over a newer one. Releases marked **Pre-release** (a version such as `1.1-beta.1`) are the same app and update in place, but they are never offered as the latest release.
+
+Debug builds from CI or Android Studio are a different app (`betterCAPER Debug`, package `com.bettercaper.debug`) and install next to the release. A debug build made before that change used the release's package name with a throwaway key, so Android refuses to update it with the signed release. Uninstall that one old debug build once (this erases its saved connections), then install the release.
+
+### Check your download
+
+```bash
+sha256sum betterCAPER-1.0.apk                       # must equal the SHA-256 in the release notes
+apksigner verify --print-certs betterCAPER-1.0.apk  # certificate SHA-256 must equal the release notes, every release
+```
+
+`apksigner` is in the Android SDK build-tools. [RELEASING.md](RELEASING.md#verifying-a-download) also shows how to verify the build attestations with the GitHub CLI.
+
+Google is phasing in developer verification for apps installed outside Google Play on certified devices. If your phone asks for extra confirmation when you install this APK, see [Android developer verification](https://developer.android.com/developer-verification) for how it works in your region.
+
 ## Features
 
 - **Dashboard** — LAN hosts, active modules, interface and gateway, with a best-effort device icon
@@ -26,7 +53,7 @@ Use this app only on networks you own or are explicitly authorised to test. Scan
 
 - Unit tests cover bettercap session parsing and the reconnect policy.
 - One SSH session at a time; `SshTunnelManager` is a process-wide singleton.
-- Release signing is configured locally through `keystore.properties` (see below). Without it, release builds are unsigned.
+- Official releases are built by GitHub Actions and signed with the project's signing key ([RELEASING.md](RELEASING.md)). A release you build yourself is unsigned unless you add `keystore.properties` (see below), and it cannot update or be updated by an official release.
 - `android_gpsd.py` is an optional gpsd emulator for the host: it receives the phone's GPS position and serves it to bettercap's `gps` module. It listens on `127.0.0.1` only.
 
 ## Security
@@ -212,7 +239,7 @@ gradlew.bat :app:assembleDebug
 ./gradlew :app:assembleDebug
 ```
 
-Debug builds use the Android debug keystore. They do not read `keystore.properties`.
+Debug builds use the Android debug keystore. They do not read `keystore.properties`. They install as `com.bettercaper.debug` ("betterCAPER Debug"), next to the release.
 
 Debug APK: `app/build/outputs/apk/debug/app-debug.apk`
 
@@ -222,15 +249,19 @@ Tests and lint:
 gradlew.bat :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
 ```
 
-### Signed release
+The release tooling has its own tests (Python 3, no SDK needed): `python -m unittest discover -s tools/release -v`.
+
+### Your own signed build
+
+This is for running your own build. The official APK is the one on the [releases page](https://github.com/primary-null/betterCAPER/releases) ([RELEASING.md](RELEASING.md)).
 
 1. Create a keystore outside git, or keep the file in the repo root. `*.jks` and `*.keystore` are gitignored.
 2. Copy `keystore.properties.example` to `keystore.properties` and set `storeFile`, `storePassword`, `keyAlias`, and `keyPassword`. `storeFile` is relative to the repo root.
 3. `gradlew.bat :app:assembleRelease`
 
-If `keystore.properties` is missing, configuration still succeeds and the release APK is unsigned. If the file is present but incomplete, or the keystore file is missing, configuration fails with an error that names the missing entry or file name.
+If `keystore.properties` is missing, configuration still succeeds and the release APK is unsigned (`app-release-unsigned.apk`, not installable). If the file is present but incomplete, or the keystore file is missing, Gradle prints which entry or file name is the problem and the release APK stays unsigned. A release build never falls back to the debug key.
 
-Release APK, when the task succeeds: `app/build/outputs/apk/release/app-release.apk`
+Release APK, when signed: `app/build/outputs/apk/release/app-release.apk`. Unsigned: `app/build/outputs/apk/release/app-release-unsigned.apk`.
 
 ---
 

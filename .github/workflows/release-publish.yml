@@ -1,0 +1,256 @@
+name: Publish release
+
+# Manual only. Takes the APK the maintainer signed offline and attached to a DRAFT release and
+# publishes that draft, but only after checking, on GitHub's runner, that
+#   - it was built by the "Release build (unsigned)" workflow from main (attestation verified),
+#   - it holds exactly the contents of that build plus a signature,
+#   - it carries one signature, from the pinned release certificate and not the Android debug one,
+#   - it is not a downgrade of anything already published.
+# It fails closed: with the repository variable RELEASE_CERT_SHA256 unset nothing is published.
+# Run it with dry_run ticked first; that verifies everything and changes nothing. See RELEASING.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag of the draft release (v + versionName, for example v1.0)'
+        required: true
+        type: string
+      build_run_id:
+        description: 'Run ID of the "Release build (unsigned)" run that produced the APK'
+        required: true
+        type: string
+      dry_run:
+        description: 'Verify only. Untick to publish the draft release.'
+        required: true
+        type: boolean
+        default: true
+
+permissions: {}
+
+concurrency:
+  group: release-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Verify and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write      # edit the draft release and let GitHub create the tag when it is published
+      actions: read        # download the unsigned artifact of the build run
+      id-token: write      # sign the attestation of the published APK
+      attestations: write  # store it
+    defaults:
+      run:
+        shell: bash
+    env:
+      BUILD_TOOLS_VERSION: 36.0.0
+      RELEASE_TAG: ${{ inputs.tag }}
+      BUILD_RUN_ID: ${{ inputs.build_run_id }}
+      RELEASE_CERT_SHA256: ${{ vars.RELEASE_CERT_SHA256 }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+    - name: Releases are published from main only
+      if: github.ref != 'refs/heads/main'
+      run: |
+        echo "::error::Run this workflow from main; this run is on ${GITHUB_REF}."
+        exit 1
+
+    - name: Validate inputs and the pinned certificate
+      run: |
+        fail() { echo "::error::$1"; exit 1; }
+        [[ "$RELEASE_TAG" =~ ^v[0-9]+(\.[0-9]+)*(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$ ]] || fail "Tag '${RELEASE_TAG}' is not v + a plain version such as v1.0 or v1.1-beta.1."
+        [[ "$BUILD_RUN_ID" =~ ^[0-9]+$ ]] || fail "build_run_id must be a number."
+        [ -n "$RELEASE_CERT_SHA256" ] || fail "The repository variable RELEASE_CERT_SHA256 is not set, so no signed APK can be accepted. Set it to the SHA-256 of the release signing certificate (RELEASING.md)."
+        [[ "$RELEASE_CERT_SHA256" =~ ^[0-9A-Fa-f:,[:space:]]+$ ]] || fail "RELEASE_CERT_SHA256 must be hexadecimal SHA-256 fingerprints."
+
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Identify the build run
+      run: |
+        run=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${BUILD_RUN_ID}")
+        jq -e '(.path | startswith(".github/workflows/release-build.yml")) and .conclusion == "success" and .head_branch == "main" and .event == "workflow_dispatch"' <<<"$run" > /dev/null \
+          || { echo "::error::Run ${BUILD_RUN_ID} is not a successful 'Release build (unsigned)' run on main."; exit 1; }
+        head_sha=$(jq -r .head_sha <<<"$run")
+        [[ "$head_sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Unexpected commit id."; exit 1; }
+        echo "HEAD_SHA=${head_sha}" >> "$GITHUB_ENV"
+
+    - name: Download the unsigned build
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: unsigned-${{ inputs.tag }}
+        path: unsigned
+        run-id: ${{ inputs.build_run_id }}
+        github-token: ${{ github.token }}
+
+    - name: Verify the unsigned build and its attestation
+      run: |
+        fail() { echo "::error::$1"; exit 1; }
+        meta=unsigned/release-metadata.json
+        name=$(jq -r .unsignedApk "$meta")
+        [[ "$name" =~ ^betterCAPER-[0-9A-Za-z.-]+-unsigned\.apk$ ]] || fail "Unexpected unsigned file name."
+        apk="unsigned/${name}"
+        [ "$(sha256sum "$apk" | cut -d' ' -f1)" = "$(jq -r .unsignedSha256 "$meta")" ] || fail "The unsigned APK does not match its metadata."
+        [ "$(jq -r .tag "$meta")" = "$RELEASE_TAG" ] || fail "The build was made for a different tag."
+        [ "$(jq -r .commit "$meta")" = "$HEAD_SHA" ] || fail "The build metadata names a different commit than the build run."
+        gh attestation verify "$apk" --repo "$GITHUB_REPOSITORY" \
+          --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/release-build.yml" \
+          --source-ref refs/heads/main --source-digest "$HEAD_SHA"
+        version="${RELEASE_TAG#v}"
+        [ "$(jq -r .versionName "$meta")" = "$version" ] || fail "versionName in the build is not ${version}."
+        {
+          echo "VERSION=${version}"
+          echo "VERSION_CODE=$(jq -r .versionCode "$meta")"
+          echo "PRERELEASE=$(jq -r .prerelease "$meta")"
+          echo "UNSIGNED_APK=${apk}"
+          echo "ASSET_NAME=betterCAPER-${version}.apk"
+        } >> "$GITHUB_ENV"
+
+    - name: Find the draft release and the signed APK
+      run: |
+        fail() { echo "::error::$1"; exit 1; }
+        releases=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" | jq -s 'add // []')
+        match=$(jq --arg tag "$RELEASE_TAG" '[.[] | select(.tag_name == $tag)]' <<<"$releases")
+        [ "$(jq length <<<"$match")" = 1 ] || fail "Expected exactly one release for ${RELEASE_TAG}: create it as a draft with the signed APK attached."
+        jq -e '.[0].draft == true' <<<"$match" > /dev/null || fail "${RELEASE_TAG} is already published."
+
+        # A tag that already exists must point at the built commit; otherwise the draft must target it.
+        existing=$(gh api "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/${RELEASE_TAG}" --jq ".[] | select(.ref == \"refs/tags/${RELEASE_TAG}\") | .object.sha")
+        if [ -n "$existing" ]; then
+          [ "$existing" = "$HEAD_SHA" ] || fail "Tag ${RELEASE_TAG} already exists and does not point at the built commit."
+        else
+          [ "$(jq -r '.[0].target_commitish' <<<"$match")" = "$HEAD_SHA" ] || fail "The draft must target the built commit ${HEAD_SHA} (gh release create --draft --target)."
+        fi
+
+        [ "$(jq '.[0].assets | length' <<<"$match")" = 1 ] || fail "The draft must hold exactly one asset, ${ASSET_NAME}."
+        jq -e --arg name "$ASSET_NAME" '.[0].assets[0] | .name == $name and .state == "uploaded"' <<<"$match" > /dev/null || fail "The draft's only asset must be ${ASSET_NAME}."
+        asset_id=$(jq -r '.[0].assets[0].id' <<<"$match")
+        mkdir -p signed
+        gh api -H "Accept: application/octet-stream" "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" > "signed/${ASSET_NAME}"
+        [ -s "signed/${ASSET_NAME}" ] || fail "Could not download the signed APK."
+        # GitHub records a digest for every uploaded asset; the bytes we got must match it.
+        digest=$(jq -r '.[0].assets[0].digest // empty' <<<"$match")
+        if [ -n "$digest" ]; then
+          [ "$digest" = "sha256:$(sha256sum "signed/${ASSET_NAME}" | cut -d' ' -f1)" ] || fail "The downloaded APK does not match the digest GitHub recorded for the asset."
+        fi
+
+        # Android refuses a lower versionCode over a higher one, so never publish a downgrade.
+        previous=$(jq '[.[] | select(.draft | not) | (.body // "") | scan("Version code: ([0-9]+)") | .[0] | tonumber] | max // 0' <<<"$releases")
+        [ "$VERSION_CODE" -gt "$previous" ] || fail "versionCode ${VERSION_CODE} is not higher than the already published ${previous}."
+        echo "RELEASE_ID=$(jq -r '.[0].id' <<<"$match")" >> "$GITHUB_ENV"
+
+    - name: Install pinned Android build-tools
+      run: |
+        "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "build-tools;${BUILD_TOOLS_VERSION}" > /dev/null
+        test -x "${ANDROID_HOME}/build-tools/${BUILD_TOOLS_VERSION}/apksigner"
+
+    - name: Verify the signed APK
+      run: |
+        python3 -I tools/release/apk_check.py signed "signed/${ASSET_NAME}" \
+          --cert-sha256 "$RELEASE_CERT_SHA256" --compare-unsigned "$UNSIGNED_APK" --tag "$RELEASE_TAG" \
+          --build-tools "${ANDROID_HOME}/build-tools/${BUILD_TOOLS_VERSION}" \
+          --commit "$HEAD_SHA" --run-id "$BUILD_RUN_ID" --json signed-check.json
+        echo "SIGNED_SHA256=$(jq -r .sha256 signed-check.json)" >> "$GITHUB_ENV"
+        echo "SIGNER_SHA256=$(jq -r .signerSha256 signed-check.json)" >> "$GITHUB_ENV"
+
+    - name: Write the release notes
+      run: |
+        {
+          echo "## betterCAPER ${VERSION}"
+          echo
+          section=$(awk -v v="$VERSION" '$0 == "## " v { found = 1; next } /^## / { found = 0 } found' CHANGELOG.md | sed '/./,$!d')
+          [ -z "$section" ] || { printf '%s\n' "$section"; echo; }
+          echo "### File and checks"
+          echo
+          echo "- File: \`${ASSET_NAME}\` (package \`com.bettercaper\`, Android 10 or later)"
+          echo "- SHA-256: \`${SIGNED_SHA256}\`"
+          echo "- Signing certificate SHA-256: \`${SIGNER_SHA256}\` (identical for every release; if it ever differs, do not install)"
+          echo "- Version code: ${VERSION_CODE}"
+          echo "- Built from commit [${HEAD_SHA:0:12}](https://github.com/${GITHUB_REPOSITORY}/commit/${HEAD_SHA}) by [build run ${BUILD_RUN_ID}](https://github.com/${GITHUB_REPOSITORY}/actions/runs/${BUILD_RUN_ID})"
+          echo
+          echo "GitHub built the unsigned APK and attested its provenance. The maintainer added the signature on their own machine; this release workflow then checked that the signed file holds the same contents as that build. Install and upgrade steps: [README](https://github.com/${GITHUB_REPOSITORY}#download-and-install)."
+        } > notes.md
+        cat notes.md
+
+    - name: Dry run result
+      if: inputs.dry_run
+      run: |
+        {
+          echo "## Dry run for ${RELEASE_TAG}: all checks passed, nothing was changed"
+          echo
+          echo "Untick **dry_run** and run again to publish."
+          echo
+          echo '```'
+          echo "signed APK sha256  ${SIGNED_SHA256}"
+          echo "signer sha256      ${SIGNER_SHA256}"
+          echo "version code       ${VERSION_CODE}"
+          echo "prerelease         ${PRERELEASE}"
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Describe the verification for the attestation
+      if: ${{ !inputs.dry_run }}
+      run: |
+        jq -n --arg tag "$RELEASE_TAG" --arg commit "$HEAD_SHA" --arg run "$BUILD_RUN_ID" \
+              --arg unsigned "$(jq -r .unsignedSha256 unsigned/release-metadata.json)" --arg signer "$SIGNER_SHA256" \
+              --argjson code "$VERSION_CODE" \
+          '{tag: $tag, commit: $commit, buildRunId: $run, unsignedSha256: $unsigned, signerSha256: $signer, versionCode: $code,
+            statement: "The subject has the same entries as the attested unsigned build plus one signature from the pinned release certificate."}' \
+          > signed-release-predicate.json
+
+    - name: Attest the signed APK
+      if: ${{ !inputs.dry_run }}
+      uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+      with:
+        subject-path: signed/betterCAPER-*.apk
+        predicate-type: https://github.com/${{ github.repository }}/blob/main/RELEASING.md#signed-release-attestation
+        predicate-path: signed-release-predicate.json
+
+    - name: Publish the release
+      if: ${{ !inputs.dry_run }}
+      run: |
+        # Prereleases are never "latest", so releases/latest keeps pointing at the newest stable build.
+        if [ "$PRERELEASE" = true ]; then latest=false; else latest=true; fi
+        gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" \
+          -f name="betterCAPER ${VERSION}" -F body=@notes.md -F draft=false \
+          -F prerelease="$PRERELEASE" -f make_latest="$latest" > /dev/null
+        echo "Published ${RELEASE_TAG}."
+
+    - name: Check the public download without credentials
+      if: ${{ !inputs.dry_run }}
+      run: |
+        # curl sends no credentials: this is what a visitor who is not signed in gets.
+        url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/${ASSET_NAME}"
+        ok=false
+        for attempt in 1 2 3 4 5 6; do
+          if curl -fsSL -o anonymous.apk "$url"; then ok=true; break; fi
+          sleep 10
+        done
+        [ "$ok" = true ] || { echo "::error::Anonymous download of ${url} failed."; exit 1; }
+        [ "$(sha256sum anonymous.apk | cut -d' ' -f1)" = "$SIGNED_SHA256" ] || { echo "::error::The public download differs from the verified APK."; exit 1; }
+        if [ "$PRERELEASE" != true ]; then
+          latest=$(curl -fsSL "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest" | jq -r .tag_name)
+          [ "$latest" = "$RELEASE_TAG" ] || { echo "::error::releases/latest points at ${latest}, not ${RELEASE_TAG}."; exit 1; }
+        fi
+        {
+          echo "## Published ${RELEASE_TAG}"
+          echo
+          echo "Anonymous download of \`${ASSET_NAME}\` matched the verified SHA-256 \`${SIGNED_SHA256}\`."
+          echo
+          echo "https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_TAG}"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Report whether the release is immutable
+      if: ${{ !inputs.dry_run }}
+      continue-on-error: true
+      run: |
+        if gh release verify "$RELEASE_TAG"; then
+          echo "::notice::Release ${RELEASE_TAG} is immutable and carries a release attestation."
+        else
+          echo "::notice::Release ${RELEASE_TAG} is not immutable. Enable immutable releases in the repository settings (RELEASING.md)."
+        fi

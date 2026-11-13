@@ -3,6 +3,10 @@ permissions:
 
 name: Android CI
 
+# Continuous integration only. The APK uploaded here is a DEBUG build signed with a throwaway key and
+# is not a release: it needs a GitHub sign-in to download and expires. Releases are built and
+# published by release-build.yml and release-publish.yml (see RELEASING.md).
+
 on:
   push:
     branches: [ master, main ]
@@ -14,26 +18,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-    
+      with:
+        persist-credentials: false
+
     - name: Set up JDK 17
       uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
       with:
         java-version: '17'
         distribution: 'temurin'
         cache: gradle
-    
+
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
-    
+
+    - name: Release tooling tests
+      run: python3 -m unittest discover -s tools/release -v
+
+    - name: Unit tests
+      run: ./gradlew :app:testDebugUnitTest
+
     - name: Lint
       run: ./gradlew lint
-    
-    - name: Build
-      run: ./gradlew assembleDebug
-    
-    - name: Upload APK
+
+    - name: Build debug and unsigned release
+      run: ./gradlew assembleDebug assembleRelease
+
+    - name: Check the unsigned release APK
+      run: python3 -I tools/release/apk_check.py unsigned app/build/outputs/apk/release/app-release-unsigned.apk
+
+    - name: Upload debug APK (CI only, not a release)
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-      if: always()
       with:
         name: debug-apk
-        path: app/build/outputs/apk/debug/
+        path: app/build/outputs/apk/debug/app-debug.apk
+        retention-days: 14
+        if-no-files-found: error
